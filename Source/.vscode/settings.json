@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "usb_desc.h": "c",
+        "queue.h": "c",
+        "stm32f10x_usart.h": "c",
+        "stm32f10x_gpio.h": "c",
+        "stm32f10x.h": "c",
+        "usart_dev.h": "c",
+        "mempool.h": "c"
+    }
+}
