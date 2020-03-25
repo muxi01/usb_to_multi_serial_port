@@ -33,7 +33,10 @@
 #include "hw_config.h"
 #include "usb_istr.h"
 #include "usb_pwr.h"
-#include "memPool.h"
+#include "USART_Dev.h"
+#include "usbcache.h"
+
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 
@@ -65,15 +68,14 @@ static uint8_t rxBuff[EP_NUM][ENDPOINT_DATA_SIZE]={0};
 static uint8_t beGoing[EP_NUM]={0};
 
 
-static const  uint8_t usbTmemID[EP_NUM]={0,USART1_RX_ID,0,USART2_RX_ID,0,USART3_RX_ID};
+static const  ENUM_COM_ID   usbComId[EP_NUM]={COM1,COM1,COM2,COM2,COM3,COM3};
 
 void MoveDataBuffer2Usb(uint8_t nEndp)
 {
     uint16_t len = 0;
     if((nEndp < EP_NUM)&&(ENDP_TX_SIZE(nEndp) >0))
     {
-        len = MemPool_ReadBytes(usbTmemID[nEndp],txBuff[nEndp], ENDP_TX_SIZE(nEndp));
-
+        len = USART_readHoop(usbComId[nEndp],txBuff[nEndp], ENDP_TX_SIZE(nEndp));
         if (len > 0)
         {
             beGoing[nEndp]  =(len == ENDP_TX_SIZE(nEndp)) ? 1 : 0;
@@ -90,16 +92,13 @@ void MoveDataBuffer2Usb(uint8_t nEndp)
     }
 }
 
-
-static const uint8_t  usbRmemID[EP_NUM]={0,USART1_TX_ID, 0,USART2_TX_ID,0,USART3_TX_ID};
-
 void MoveDataUsb2Buffer(uint8_t nEndp)
 { 
     uint16_t USB_Rx_Cnt;
     if((nEndp < EP_NUM)&&(ENDP_RX_SIZE(nEndp) > 0))
     {
         USB_Rx_Cnt = USB_SIL_Read(nEndp, rxBuff[nEndp]);
-        MemPool_WriteBytes(usbRmemID[nEndp], rxBuff[nEndp], USB_Rx_Cnt);
+        usbcache_push((u8)usbComId[nEndp],rxBuff[nEndp], USB_Rx_Cnt);
         SetEPRxValid(nEndp);
     }
 }

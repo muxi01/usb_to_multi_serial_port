@@ -24,10 +24,10 @@
 #define TIM_2_EN                1
 #define TIM_3_EN                1
 #define TIM_4_EN                1
-#define TIM_5_EN                1
-#define TIM_6_EN                1
-#define TIM_7_EN                1
-#define TIM_8_EN                1
+#define TIM_5_EN                0
+#define TIM_6_EN                0
+#define TIM_7_EN                0
+#define TIM_8_EN                0
 
 
 #define TIM_IRQEnter()                  //进中断执行函数

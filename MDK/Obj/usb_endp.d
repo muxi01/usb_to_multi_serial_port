@@ -7,7 +7,7 @@
 .\obj\usb_endp.o: ..\Source\STM32F10xLib\M3\core_cm3.h
 .\obj\usb_endp.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\obj\usb_endp.o: ..\Source\STM32F10xLib\M3\core_cmInstr.h
-.\obj\usb_endp.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\cmsis_armcc.h
+.\obj\usb_endp.o: ..\Source\STM32F10xLib\M3\cmsis_armcc.h
 .\obj\usb_endp.o: ..\Source\STM32F10xLib\M3\core_cmFunc.h
 .\obj\usb_endp.o: ..\Source\STM32F10xLib\M3\system_stm32f10x.h
 .\obj\usb_endp.o: ..\Source\STM32F10xLib\M3\stm32f10x_conf.h
@@ -28,4 +28,5 @@
 .\obj\usb_endp.o: ..\Source\USB\src\usb_desc.h
 .\obj\usb_endp.o: ..\Source\USB\src\usb_istr.h
 .\obj\usb_endp.o: ..\Source\USB\src\usb_pwr.h
-.\obj\usb_endp.o: ..\Source\Public\memPool.h
+.\obj\usb_endp.o: ..\Source\Drive\USART_Dev.h
+.\obj\usb_endp.o: ..\Source\Public\usbcache.h

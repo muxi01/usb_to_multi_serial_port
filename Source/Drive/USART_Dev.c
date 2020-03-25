@@ -7,13 +7,14 @@
 #include "stm32f10x_usart.h"
 #include "stm32f10x_dma.h"
 #include "USART_Dev.h"
-#include "memPool.h"
+
 #define     UART1_PORT            GPIOA 
 #define     USART1_TX_PIN         9
 #define     USART1_RX_PIN         10
 #define     TX_IO_MODE            GPIO_Mode_AF_OD       //GPIO_Mode_AF_PP
 #define     RX_IO_MODE            GPIO_Mode_IPU         //GPIO_Mode_IN_FLOATING
 
+static ST_USART_RX_BUFF   rxbuff[3];
 
 static void USART1_Init(u32 BaudRate,void *IdleEn)
 {
@@ -155,12 +156,13 @@ void USART3_Init(u32 BaudRate,void *IdleEn)
 
 void USART_DefInit(void)
 {
+    int i;
     int bps =115200;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 | 
                             RCC_APB2Periph_GPIOA | 
                             RCC_APB2Periph_GPIOB |
                             RCC_APB2Periph_GPIOC |
-                            RCC_APB2Periph_AFIO  ,    ENABLE);
+                            RCC_APB2Periph_AFIO   ,ENABLE);
 
     RCC_APB1PeriphClockCmd( RCC_APB1Periph_USART2 |
                             RCC_APB1Periph_USART3 ,   ENABLE);
@@ -170,53 +172,15 @@ void USART_DefInit(void)
     USART1_Init(bps, (void *)1);
     USART2_Init(bps, (void *)1);
     USART3_Init(bps, (void *)1);
+    for(i=0;i<3;i++)
+    {
+        rxbuff[i].idelSignal =0;
+        rxbuff[i].readPos   =0;
+        rxbuff[i].writePos  =0;
+    }
 }
 
 const void  *USARTtable[]=      {USART1, USART2, USART3};
-static volatile  u32 USARTLock[]={0,0,0};  
-
-static void  USART_GetKey(ENUM_COM_ID com)
-{
-    u8  index =(u8)com;
-    while(USARTLock[index])
-    {
-        __nop();
-		__nop();
-		__nop();
-		__nop();
-		__nop();
-		__nop();
-		__nop();
-		__nop();
-		__nop();
-		__nop();
-    }
-    USARTLock[index]=1;
-}
-
-static void  USART_ReleaseKey(ENUM_COM_ID com)
-{
-    u8  index =(u8)com;
-    USARTLock[index]=0;
-}
-
-void USART_Cfg(ENUM_COM_ID com,u32 bps)
-{
-    USART_GetKey(com);
-    switch(com)
-    {
-        case COM1:
-            USART1_Init(bps, (void *)1);
-            break;
-        case COM2:
-            USART2_Init(bps, (void *)1);
-            break;
-        case COM3:
-            USART3_Init(bps, (void *)1);
-            break;
-    }
-    USART_ReleaseKey(com);
-}
 
 
 void USART_SendBytes(ENUM_COM_ID com,u8 *pbuff,u16 len)
@@ -306,7 +270,6 @@ void Usart_DmaUsart3Tx(u32 BuffAddr,u16 BuffSize)
 static  u8   dmaStatus[3]={0};
 void USART_DmaTx(ENUM_COM_ID com,u8 *pBuff,u16 BuffSize)
 {    
-     USART_GetKey(com);    
 	 switch(com)
      {
          case COM1:
@@ -326,7 +289,6 @@ void USART_DmaTx(ENUM_COM_ID com,u8 *pBuff,u16 BuffSize)
 
 void USART_DmaDone(ENUM_COM_ID com)
 {
-    USART_ReleaseKey(com);
     dmaStatus[(u8)com] =0;
 }
 
@@ -336,32 +298,53 @@ u8   USART_GetDmaIsBusy(ENUM_COM_ID com)
     return dmaStatus[(u8)com];
 }
 
-#define     USART_RX_BUFF_LEN       64
-static  u8  usartRxLen[3]={0};
-static  u8  usartRxBuff[3][USART_RX_BUFF_LEN]={0};
-static  const u8   memoryNo[3]={USART1_RX_ID,USART2_RX_ID,USART3_RX_ID};
 
 void USART_InterruptServer(ENUM_COM_ID com,u8 newByte,u8 IsIdle)
 {
-    u8  index =(u8)com;
+    ST_USART_RX_BUFF   *p=&rxbuff[(u8)com];
     if(!IsIdle)
     {
-        if(usartRxLen[index] < USART_RX_BUFF_LEN)
-        {
-            usartRxBuff[index][usartRxLen[index]] =newByte;
-            usartRxLen[index]++;
-            if(usartRxLen[index] == USART_RX_BUFF_LEN)
-            {
-                MemPool_WriteBytes(memoryNo[index],usartRxBuff[index],usartRxLen[index]);
-                usartRxLen[index] =0;
-            }
+        p->buff[p->writePos++] =newByte;
+        if(p->writePos == USART_RX_BUFF_LEN){
+            p->writePos =0;
         }
     }
-    else if(usartRxLen[index] > 0)
+    else if(p->writePos > 0)
     {
-        MemPool_WriteBytes(memoryNo[index],usartRxBuff[index],usartRxLen[index]);
-        usartRxLen[index] =0;
+        p->idelSignal =1;
     }
+}
+
+void USART_hoopcpy(u8 *dst,u8 *src, u8 pos,u8 size)
+{
+    int32_t i;
+    for(i=0;i<size;i++){
+       dst[i]= src[(pos + i) % USART_RX_BUFF_LEN];
+    }
+}
+
+u8 USART_readHoop(ENUM_COM_ID com,u8 *pbuff,u8 size)
+{
+    ST_USART_RX_BUFF   *p=&rxbuff[(u8)com];
+    int32_t  rlen =p->writePos - p->readPos;
+    if(rlen < 0)
+        rlen +=USART_RX_BUFF_LEN;  
+    if(rlen >= size)
+    {
+        USART_hoopcpy(pbuff,p->buff,p->readPos,size);
+        p->readPos +=size;
+    }
+    else if((p->idelSignal > 0)&&(rlen > 0))
+    {           
+        p->idelSignal =0;
+        USART_hoopcpy(pbuff,p->buff,p->readPos,rlen);  
+        p->readPos =(p->readPos + rlen) % USART_RX_BUFF_LEN;
+    }
+    else
+    {
+        rlen =0;
+    }   
+    return rlen;
 }
 
 

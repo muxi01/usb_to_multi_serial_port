@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "hw_config.h": "c",
+        "usart_dev.h": "c",
+        "mempool.h": "c",
+        "usbcache.h": "c"
+    }
+}
